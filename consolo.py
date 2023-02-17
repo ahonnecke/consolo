@@ -263,13 +263,14 @@ parser = ArgParser()
 def main(
     profile_name: str,
     function_name: str,
+    path: str,
     hot_reload: bool = False,
 ):
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
     ROOT = Path.cwd()
-    PROFILE = profile_name
+    ROOT = Path(path)
 
-    reloader = LambdaReloader(PROFILE, function_name, ROOT)
+    reloader = LambdaReloader(profile_name, function_name, ROOT)
 
     # TODO: perform the download and compare
     if not reloader.is_downloaded():
