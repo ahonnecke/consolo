@@ -104,10 +104,13 @@ class LambdaReloader(LambdaWrapper):
     """Map an AWS function onto a local dir."""
 
     @property
+    def archive_dir(self)-> Path:
+        return Path("/tmp")
+
+    @property
     def archive(self):
         """Get the archive filename."""
-        # TODO: move to /tmp
-        return ".".join([self.function_name, "zip"])
+        return self.archive_dir.joinpath(".".join([self.function_name, "zip"]))
 
     def is_downloaded(self) -> bool:
         """Does there exist a local dir for code."""
