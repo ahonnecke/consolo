@@ -104,7 +104,7 @@ class LambdaReloader(LambdaWrapper):
     """Map an AWS function onto a local dir."""
 
     @property
-    def archive_dir(self)-> Path:
+    def archive_dir(self) -> Path:
         """Location for building archive of function."""
         return Path("/tmp")
 
@@ -114,14 +114,14 @@ class LambdaReloader(LambdaWrapper):
         return self.archive_dir.joinpath(".".join([self.function_name, "zip"]))
 
     def validate_root(self) -> bool:
-        """Does the destination directory exist."""
+        """Raise if destination directory does not exist."""
         if not os.path.isdir(self.local_root):
             raise RuntimeError(f"Local dir {self.local_root} does not exist.")
 
         return True
 
     def download_function_code(self):
-        """Download and extract the lambda code to a local directory."""
+        """Download and extract all lambda files to local, overwriting existing."""
         response = self.lambda_client.get_function(FunctionName=self.function_name)
         zip_url = response["Code"]["Location"]
 
@@ -132,7 +132,6 @@ class LambdaReloader(LambdaWrapper):
         """Read the local list of files in the lambda."""
         self.zip = zipfile.ZipFile(self.archive)
         self.manifest = self.zip.namelist()
-        # TODO deal with CWD
         self.write_manifest()
         return self.manifest
 
@@ -146,19 +145,18 @@ class LambdaReloader(LambdaWrapper):
         shutil.unpack_archive(self.archive, self.local_root)
 
     def clone(self):
-        """Download and extract all lambda code."""
+        """Download AWS lambda onto local directory."""
         self.download_function_code()
         self.read_manifest()
         self.expand_function_code()
 
     def extract_relative_event_path(self, event) -> str:
-        """Grab file path from event, remove local root leaving relative
-        path."""
+        """Extract relative path from event."""
         path = str(event.src_path)
         prefix = str(self.local_root) + "/"
 
         if prefix and path.startswith(prefix):
-            return path[len(prefix):]
+            return path[len(prefix) :]
 
         raise RuntimeError("Prefix was not in path")
 
@@ -234,16 +232,15 @@ class LambdaReloader(LambdaWrapper):
         shutil.make_archive(name, "zip", name)
 
     def read_archive(self) -> bytes:
+        """Open archive and return bytes for upload."""
         with open(self.archive, "rb") as file_data:
             return file_data.read()
 
     def make_archive(self, name):
-        """Create zipfile of function_name directory and upload to
-        function_name."""
-
+        """Create archive of all files in the manifest."""
         # Open a zip file at the given filepath. If it doesn't exist, create one.
         # If the directory does not exist, it fails with FileNotFoundError
-        with zipfile.ZipFile(self.archive, 'w') as zipf:
+        with zipfile.ZipFile(self.archive, "w") as zipf:
             for file in self.manifest:
                 # Add a file located at the source_path to the destination within the zip
                 # file. It will overwrite existing files if the names collide, but it
@@ -252,12 +249,6 @@ class LambdaReloader(LambdaWrapper):
                 zipf.write(source_path, file)
 
         return str(self.local_root.joinpath(self.archive))
-
-        # # TODO: Don't hardcode directory name
-        # # TODO: Support exsiting directory name
-        # shutil.make_archive(name, "zip", name)
-        # with open(self.archive, "rb") as file_data:
-        #     return file_data.read()
 
     def watch(self):
         """Start the directory watching daemon."""
@@ -276,16 +267,21 @@ def main(
     profile_name: str,
     function_name: str,
     path: str,
+    hot_reload: bool = True,
 ):
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
     reloader = LambdaReloader(profile_name, function_name, path)
 
-    if not reloader.validate_root():
-        # If there is no code, then the user likely wants to download the lambda
-        reloader.clone()
+    reloader.validate_root()
 
-    # If there IS code, then the user likely wants to upload the lambda
-    reloader.watch()
+    if hot_reload:
+        # If hot reload, dowload the code
+        reloader.clone()
+        # and start the daemon
+        reloader.watch()
+    else:
+        # If not reload, just push whatever is there now.
+        reloader.update_function_code()
 
 
 if __name__ == "__main__":
