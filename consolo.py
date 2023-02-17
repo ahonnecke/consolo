@@ -114,7 +114,10 @@ class LambdaReloader(LambdaWrapper):
 
     def is_downloaded(self) -> bool:
         """Does there exist a local dir for code."""
-        return os.path.isdir(self.function_name)
+        if not os.path.isdir(self.local_root):
+            raise RuntimeError(f"Local dir {self.local_root} does not exist.")
+
+        return False
 
     def download_function_code(self):
         """Download and extract the lambda code to a local directory."""
@@ -139,7 +142,7 @@ class LambdaReloader(LambdaWrapper):
 
     def expand_function_code(self):
         """Unpack the archive."""
-        shutil.unpack_archive(self.archive, self.function_name)
+        shutil.unpack_archive(self.archive, self.local_root)
 
     def clone(self):
         """Download and extract all lambda code."""
@@ -151,7 +154,7 @@ class LambdaReloader(LambdaWrapper):
         """Grab file path from event, remove local root leaving relative
         path."""
         path = str(event.src_path)
-        prefix = str(self.local_root.joinpath(self.function_name)) + "/"
+        prefix = str(self.local_root) + "/"
 
         if prefix and path.startswith(prefix):
             return path[len(prefix):]
@@ -244,7 +247,7 @@ class LambdaReloader(LambdaWrapper):
                 # Add a file located at the source_path to the destination within the zip
                 # file. It will overwrite existing files if the names collide, but it
                 # will give a warning
-                source_path = self.local_root.joinpath(self.function_name).joinpath(file)
+                source_path = self.local_root.joinpath(file)
                 zipf.write(source_path, file)
 
         return str(self.local_root.joinpath(self.archive))
@@ -258,7 +261,7 @@ class LambdaReloader(LambdaWrapper):
     def watch(self):
         """Start the directory watching daemon."""
         w = Watcher(
-            self.local_root.joinpath(self.function_name),
+            self.local_root,
             Handler(on_create=self.handle_create, on_modify=self.handle_modify),
         )
         w.run()
