@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import json
 import logging
 import os
 import shutil
 import time
+import zipfile
 from functools import cached_property
 from pathlib import Path
 
@@ -10,11 +12,15 @@ import boto3
 import requests
 from argdantic import ArgParser
 from botocore.exceptions import ClientError
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import (FileCreatedEvent, FileModifiedEvent,
+                             FileSystemEventHandler)
 from watchdog.observers import Observer
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
 
+logging.getLogger('boto').setLevel(logging.CRITICAL)
+logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 class Watcher:
     def __init__(self, dirpath, handler):
@@ -30,7 +36,7 @@ class Watcher:
                 time.sleep(5)
         except:
             self.observer.stop()
-            print("Error")
+            logger.error("Error")
 
         self.observer.join()
 
@@ -39,20 +45,21 @@ class Handler(FileSystemEventHandler):
     def __init__(self, onchange):
         self.onchange = onchange
 
-    @staticmethod
-    def on_any_event(event):
+    def on_any_event(self, event):
         if event.is_directory:
             return None
 
-        elif event.event_type == "created":
+        if isinstance(event, FileCreatedEvent):
             # Take any action here when a file is first created.
-            print(f"Received created event - {event.src_path}.")
+            logger.info(f"Received created event - {event.src_path}.")
+            self.onchange(event)
 
-        elif event.event_type == "modified":
+        elif isinstance(event, FileModifiedEvent):
             # Taken any action here when a file is modified.
-            print(f"Received modified event - {event.src_path}.")
+            logger.info(f"Received modified event - {event.src_path}.")
+            self.onchange(event)
 
-        onchange()
+
 
 
 class LambdaWrapper:
@@ -85,7 +92,32 @@ class LambdaReloader(LambdaWrapper):
         r = requests.get(zip_url, allow_redirects=True)
         open(self.archive, "wb").write(r.content)
 
+    def read_manifest(self):
+        self.zip = zipfile.ZipFile(self.archive)
+        self.manifest = self.zip.namelist()
+        # TODO deal with CWD
+        with open(".consolo.json", "w", encoding="utf-8") as f:
+            json.dump(self.manifest, f, ensure_ascii=False, indent=4)
+
+    def expand_function_code(self):
         shutil.unpack_archive(self.archive, self.function_name)
+
+    def clone(self):
+        self.download_function_code()
+        self.read_manifest()
+        self.expand_function_code()
+
+    def path_is_in_manifest(self, relative_path) -> bool:
+        self.read_manifest()
+        # TODO: cache manifest?
+        return (relative_path in self.manifest)
+
+    def handle_event(self, event: FileModifiedEvent):
+        path = event.src_path
+        relative_path=path.lstrip(str(self.local_root))
+
+        if self.path_is_in_manifest(relative_path):
+            self.update_function_code()
 
     def update_function_code(self):
         """
@@ -96,7 +128,9 @@ class LambdaReloader(LambdaWrapper):
                                    .zip format.
         :return: Data about the update, including the status.
         """
+        logger.debug("compressing")
         deployment_package = self.make_archive(self.function_name)
+        logger.debug("compressed")
 
         try:
             response = self.lambda_client.update_function_code(
@@ -130,7 +164,6 @@ def main(
 ):
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
     ROOT = Path.cwd()
-
     PROFILE = profile_name
 
     reloader = LambdaReloader(PROFILE, function_name, ROOT)
@@ -138,17 +171,15 @@ def main(
     # TODO: perform the download and compare
     if not reloader.is_downloaded():
         # If there no code, then the user likely wants to download the lambda
-        reloader.download_function_code()
-    elif hot_reload:
-        pass
+        reloader.clone()
+
+    if hot_reload:
         # # If there IS code, then the user likely wants to upload the lambda
-        # # TODO: implement dir watching
-        # project = ROOT + function_name
-
-        # w = Watcher(project, Handler(onchange = reloader.update_function_code(function_name)))
-        # w.run()
-
-    elif not hot_reload:
+        project = ROOT.joinpath(function_name)
+        w = Watcher(project, Handler(onchange=reloader.handle_event))
+        w.run()
+    elif reloader.is_downloaded():
+        #TODO don't check is downloaded a second time?
         reloader.update_function_code()
 
 
