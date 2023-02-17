@@ -255,6 +255,14 @@ class LambdaReloader(LambdaWrapper):
         # with open(self.archive, "rb") as file_data:
         #     return file_data.read()
 
+    def watch(self, ROOT):
+        project = ROOT.joinpath(self.function_name)
+        w = Watcher(
+            project,
+            Handler(on_create=self.handle_create, on_modify=self.handle_modify),
+        )
+        w.run()
+
 
 parser = ArgParser()
 
@@ -267,9 +275,8 @@ def main(
     hot_reload: bool = False,
 ):
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
-    ROOT = Path.cwd()
-    ROOT = Path(path)
 
+    ROOT = Path(path)
     reloader = LambdaReloader(profile_name, function_name, ROOT)
 
     # TODO: perform the download and compare
@@ -279,12 +286,8 @@ def main(
 
     if hot_reload:
         # # If there IS code, then the user likely wants to upload the lambda
-        project = ROOT.joinpath(function_name)
-        w = Watcher(
-            project,
-            Handler(on_create=reloader.handle_create, on_modify=reloader.handle_modify),
-        )
-        w.run()
+        # TODO: move into reloader
+        reloader.watch(ROOT)
     elif reloader.is_downloaded():
         # TODO don't check is downloaded a second time?
         reloader.update_function_code()
