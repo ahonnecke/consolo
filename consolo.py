@@ -18,6 +18,7 @@ from watchdog.events import (FileCreatedEvent, FileModifiedEvent,
                              FileSystemEventHandler)
 from watchdog.observers import Observer
 
+from boto3.session import Session
 logger = logging.getLogger(__name__)
 
 # TODO: support -vv and raise these levels to debug
@@ -31,13 +32,13 @@ UploadableEvent = TypeVar("T", FileCreatedEvent, FileModifiedEvent)
 class Watcher:
     """Watch a directory for file events."""
 
-    def __init__(self, dirpath, handler):
+    def __init__(self, dirpath, handler) -> None:
         """Init and set dirpath to watch and handler to fire."""
         self.observer = Observer()
         self.dirpath = dirpath
         self.event_handler = handler
 
-    def run(self):
+    def run(self) -> None:
         """Start watching self.dirpath."""
         self.observer.schedule(self.event_handler, self.dirpath, recursive=True)
         self.observer.start()
@@ -54,12 +55,12 @@ class Watcher:
 class Handler(FileSystemEventHandler):
     """Filter and handlelfile system events."""
 
-    def __init__(self, on_create, on_modify):
+    def __init__(self, on_create, on_modify) -> None:
         """Init and set handler."""
         self.on_modify = on_modify
         self.on_create = on_create
 
-    def on_any_event(self, event: UploadableEvent):
+    def on_any_event(self, event: UploadableEvent) -> None:
         """Handle file event."""
         if event.is_directory:
             return None
@@ -82,14 +83,14 @@ class Handler(FileSystemEventHandler):
 class LambdaWrapper:
     """Generic lambda object."""
 
-    def __init__(self, profile_name: str, function_name: str, local_root: str):
+    def __init__(self, profile_name: str, function_name: str, local_root: str) -> None:
         """Set AWS profile, AWS function name and local path to src."""
         self.profile_name = profile_name
         self.function_name = function_name
         self.local_root = Path(local_root)
 
     @cached_property
-    def session(self):
+    def session(self) -> Session:
         """Get the boto session for a given profile."""
         return boto3.Session(profile_name=self.profile_name)
 
@@ -108,7 +109,7 @@ class LambdaReloader(LambdaWrapper):
         return Path("/tmp")
 
     @property
-    def archive(self):
+    def archive(self) -> Path:
         """Get the archive filename."""
         return self.archive_dir.joinpath(".".join([self.function_name, "zip"]))
 
@@ -119,7 +120,7 @@ class LambdaReloader(LambdaWrapper):
 
         return True
 
-    def download_function_code(self):
+    def download_function_code(self) -> None:
         """Download and extract all lambda files to local, overwriting existing."""
         response = self.lambda_client.get_function(FunctionName=self.function_name)
         zip_url = response["Code"]["Location"]
@@ -135,20 +136,20 @@ class LambdaReloader(LambdaWrapper):
         return self.manifest
 
     @property
-    def manifest_path(self):
+    def manifest_path(self) -> Path:
         """Path to the local manifest file."""
         return self.archive_dir.joinpath(f".consolo.{self.function_name}.json")
 
-    def write_manifest(self):
+    def write_manifest(self) -> None:
         """Write the in memory list of files to local storate."""
         with open(self.manifest_path, "w", encoding="utf-8") as f:
             return json.dump(self.manifest, f, ensure_ascii=False, indent=4)
 
-    def expand_function_code(self):
+    def expand_function_code(self) -> None:
         """Unpack the archive."""
         shutil.unpack_archive(self.archive, self.local_root)
 
-    def clone(self):
+    def clone(self) -> None:
         """Download AWS lambda onto local directory.
 
         TODO: delete existing files?
@@ -174,7 +175,7 @@ class LambdaReloader(LambdaWrapper):
         # TODO: cache manifest?
         return self.extract_relative_event_path(event) in self.manifest
 
-    def handle_create(self, event: FileCreatedEvent):
+    def handle_create(self, event: FileCreatedEvent) -> None:
         """Handle a file event."""
         self.read_manifest()
 
@@ -184,12 +185,12 @@ class LambdaReloader(LambdaWrapper):
 
         self.update_function_code()
 
-    def add_event_file_to_manifest(self, event):
+    def add_event_file_to_manifest(self, event) -> None:
         """Add file path from event to manifest."""
         self.manifest.append(self.extract_relative_event_path(event))
         self.write_manifest()
 
-    def handle_modify(self, event: FileModifiedEvent):
+    def handle_modify(self, event: FileModifiedEvent) -> None:
         """Handle a file event."""
         if not self.event_file_is_in_manifest(event):
             logger.debug(self.extract_relative_event_path(event))
@@ -198,7 +199,7 @@ class LambdaReloader(LambdaWrapper):
 
         self.update_function_code()
 
-    def update_function_code(self):
+    def update_function_code(self) -> None:
         """
         Compress and upload local code.
 
@@ -232,7 +233,7 @@ class LambdaReloader(LambdaWrapper):
             logger.info("Finished uploading.")
             return response
 
-    def make_archive_all(self, name):
+    def make_archive_all(self, name) -> None:
         """Create zipfile of function_name directory and upload to function_name."""
         # TODO: Don't hardcode directory name
         # TODO: Support exsiting directory name
@@ -243,7 +244,7 @@ class LambdaReloader(LambdaWrapper):
         with open(self.archive, "rb") as file_data:
             return file_data.read()
 
-    def make_archive(self, name):
+    def make_archive(self, name) -> str:
         """Create archive of all files in the manifest."""
         # Open a zip file at the given filepath. If it doesn't exist, create one.
         # If the directory does not exist, it fails with FileNotFoundError
@@ -257,7 +258,7 @@ class LambdaReloader(LambdaWrapper):
 
         return str(self.local_root.joinpath(self.archive))
 
-    def watch(self):
+    def watch(self) -> None:
         """Start the directory watching daemon."""
         w = Watcher(
             self.local_root,
@@ -275,8 +276,8 @@ def main(
     function_name: str,
     path: str,
     hot_reload: bool = True,
-    verbose: bool = False,
-):
+    verbose: bool = False
+) -> None:
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
     log_level = "INFO"
     if verbose:
