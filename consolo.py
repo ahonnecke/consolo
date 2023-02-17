@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Map an AWS lambda filesystem onto a local directory."""
 import json
 import logging
 import os
@@ -19,16 +20,21 @@ from watchdog.observers import Observer
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
 
-logging.getLogger('boto').setLevel(logging.CRITICAL)
-logging.getLogger('botocore').setLevel(logging.CRITICAL)
+logging.getLogger("boto").setLevel(logging.CRITICAL)
+logging.getLogger("botocore").setLevel(logging.CRITICAL)
+
 
 class Watcher:
+    """Watch a directory for file events."""
+
     def __init__(self, dirpath, handler):
+        """Init and set dirpath to watch and handler to fire."""
         self.observer = Observer()
         self.dirpath = dirpath
         self.event_handler = handler
 
     def run(self):
+        """Start watching self.dirpath."""
         self.observer.schedule(self.event_handler, self.dirpath, recursive=True)
         self.observer.start()
         try:
@@ -42,10 +48,14 @@ class Watcher:
 
 
 class Handler(FileSystemEventHandler):
+    """Filter and handlelfile system events."""
+
     def __init__(self, onchange):
+        """Init and set handler."""
         self.onchange = onchange
 
     def on_any_event(self, event):
+        """Handle file event."""
         if event.is_directory:
             return None
 
@@ -60,32 +70,41 @@ class Handler(FileSystemEventHandler):
             self.onchange(event)
 
 
-
-
 class LambdaWrapper:
+    """Generic lambda object."""
+
     def __init__(self, profile_name, function_name, local_root):
+        """Set AWS profile, AWS function name and local path to src."""
         self.profile_name = profile_name
         self.function_name = function_name
         self.local_root = local_root
 
     @cached_property
     def session(self):
+        """Get the boto session for a given profile."""
         return boto3.Session(profile_name=self.profile_name)
 
     @cached_property
     def lambda_client(self):
+        """Get the lambda client for the current session."""
         return self.session.client("lambda")
 
 
 class LambdaReloader(LambdaWrapper):
+    """Map an AWS function onto a local dir."""
+
     @property
     def archive(self):
+        """Get the archive filename."""
+        # TODO: move to /tmp
         return ".".join([self.function_name, "zip"])
 
-    def is_downloaded(self):
+    def is_downloaded(self) -> bool:
+        """Does there exist a local dir for code."""
         return os.path.isdir(self.function_name)
 
     def download_function_code(self):
+        """Download and extract the lambda code to a local directory."""
         response = self.lambda_client.get_function(FunctionName=self.function_name)
         zip_url = response["Code"]["Location"]
 
@@ -93,6 +112,7 @@ class LambdaReloader(LambdaWrapper):
         open(self.archive, "wb").write(r.content)
 
     def read_manifest(self):
+        """Read the local list of files in the lambda."""
         self.zip = zipfile.ZipFile(self.archive)
         self.manifest = self.zip.namelist()
         # TODO deal with CWD
@@ -100,32 +120,36 @@ class LambdaReloader(LambdaWrapper):
             json.dump(self.manifest, f, ensure_ascii=False, indent=4)
 
     def expand_function_code(self):
+        """Unpack the archive."""
         shutil.unpack_archive(self.archive, self.function_name)
 
     def clone(self):
+        """Download and extract all lambda code."""
         self.download_function_code()
         self.read_manifest()
         self.expand_function_code()
 
     def path_is_in_manifest(self, relative_path) -> bool:
+        """Determine if the given path is in the manfest."""
         self.read_manifest()
         # TODO: cache manifest?
-        return (relative_path in self.manifest)
+        return relative_path in self.manifest
 
-    def handle_event(self, event: FileModifiedEvent):
+    def handle_event(self, event):
+        """Handle a file event."""
         path = event.src_path
-        relative_path=path.lstrip(str(self.local_root))
+        relative_path = path.lstrip(str(self.local_root))
 
         if self.path_is_in_manifest(relative_path):
             self.update_function_code()
 
     def update_function_code(self):
         """
+        Compress and upload local code.
+
         Updates the code for a Lambda function by submitting a .zip archive that contains
         the code for the function.
 
-        :param deployment_package: The function code to update, packaged as bytes in
-                                   .zip format.
         :return: Data about the update, including the status.
         """
         logger.debug("compressing")
@@ -148,6 +172,9 @@ class LambdaReloader(LambdaWrapper):
             return response
 
     def make_archive(self, name):
+        """Create zipfile of function_name directory and upload to function_name."""
+        # TODO: Don't hardcode directory name
+        # TODO: Support exsiting directory name
         shutil.make_archive(name, "zip", name)
         with open(self.archive, "rb") as file_data:
             return file_data.read()
@@ -179,7 +206,7 @@ def main(
         w = Watcher(project, Handler(onchange=reloader.handle_event))
         w.run()
     elif reloader.is_downloaded():
-        #TODO don't check is downloaded a second time?
+        # TODO don't check is downloaded a second time?
         reloader.update_function_code()
 
 
