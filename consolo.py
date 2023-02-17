@@ -204,6 +204,11 @@ class LambdaReloader(LambdaWrapper):
                 FunctionName=self.function_name, ZipFile=self.read_archive()
             )
         except ClientError as err:
+            if err.response["Error"]["Code"] == "ResourceConflictException":
+                # TODO: suppress this
+                logger.debug("Tried to upload while uploading.")
+                pass
+
             logger.error(
                 "Couldn't update function %s. Here's why: %s: %s",
                 self.function_name,
