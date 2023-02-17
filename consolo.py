@@ -8,6 +8,7 @@ import time
 import zipfile
 from functools import cached_property
 from pathlib import Path
+from typing import TypeVar
 
 import boto3
 import requests
@@ -20,8 +21,12 @@ from watchdog.observers import Observer
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
 
+# TODO: support -vv and raise these levels to debug
 logging.getLogger("boto").setLevel(logging.CRITICAL)
 logging.getLogger("botocore").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+
+UploadableEvent = TypeVar("T", FileCreatedEvent, FileModifiedEvent)
 
 
 class Watcher:
@@ -50,11 +55,12 @@ class Watcher:
 class Handler(FileSystemEventHandler):
     """Filter and handlelfile system events."""
 
-    def __init__(self, onchange):
+    def __init__(self, on_create, on_modify):
         """Init and set handler."""
-        self.onchange = onchange
+        self.on_modify = on_modify
+        self.on_create = on_create
 
-    def on_any_event(self, event):
+    def on_any_event(self, event: UploadableEvent):
         """Handle file event."""
         if event.is_directory:
             return None
@@ -62,12 +68,16 @@ class Handler(FileSystemEventHandler):
         if isinstance(event, FileCreatedEvent):
             # Take any action here when a file is first created.
             logger.info(f"Received created event - {event.src_path}.")
-            self.onchange(event)
+
+            # TODO: perform AST check
+            return self.on_create(event)
 
         elif isinstance(event, FileModifiedEvent):
             # Taken any action here when a file is modified.
             logger.info(f"Received modified event - {event.src_path}.")
-            self.onchange(event)
+
+            # TODO: perform AST check
+            return self.on_modify(event)
 
 
 class LambdaWrapper:
@@ -116,8 +126,13 @@ class LambdaReloader(LambdaWrapper):
         self.zip = zipfile.ZipFile(self.archive)
         self.manifest = self.zip.namelist()
         # TODO deal with CWD
+        self.write_manifest()
+        return self.manifest
+
+    def write_manifest(self):
+        """Write the in memory list of files to local storate."""
         with open(".consolo.json", "w", encoding="utf-8") as f:
-            json.dump(self.manifest, f, ensure_ascii=False, indent=4)
+            return json.dump(self.manifest, f, ensure_ascii=False, indent=4)
 
     def expand_function_code(self):
         """Unpack the archive."""
@@ -129,19 +144,38 @@ class LambdaReloader(LambdaWrapper):
         self.read_manifest()
         self.expand_function_code()
 
-    def path_is_in_manifest(self, relative_path) -> bool:
+    def extract_relative_event_path(self, event) -> str:
+        """Grab file path from event, remove local root leaving relative path."""
+        return event.src_path.lstrip(str(self.local_root)) in self.manifest
+
+    def event_file_is_in_manifest(self, event) -> bool:
         """Determine if the given path is in the manfest."""
         self.read_manifest()
+
         # TODO: cache manifest?
-        return relative_path in self.manifest
+        return self.extract_relative_event_path(event)
 
-    def handle_event(self, event):
+    def handle_create(self, event: FileCreatedEvent):
         """Handle a file event."""
-        path = event.src_path
-        relative_path = path.lstrip(str(self.local_root))
+        self.read_manifest()
 
-        if self.path_is_in_manifest(relative_path):
-            self.update_function_code()
+        if not self.event_file_is_in_manifest(event):
+            # This should always fire, new file should not be in the manifest.
+            self.add_event_file_to_manifest(event)
+
+        self.update_function_code()
+
+    def add_event_file_to_manifest(self, event):
+        """Add file path from event to manifest."""
+        self.manifest.append(self.extract_relative_event_path(event))
+        self.write_manifest()
+
+    def handle_modify(self, event: FileModifiedEvent):
+        """Handle a file event."""
+        if not self.event_file_is_in_manifest(event):
+            return
+
+        self.update_function_code()
 
     def update_function_code(self):
         """
@@ -169,6 +203,7 @@ class LambdaReloader(LambdaWrapper):
             )
             raise
         else:
+            logger.info("Finished uploading.")
             return response
 
     def make_archive(self, name):
@@ -203,7 +238,10 @@ def main(
     if hot_reload:
         # # If there IS code, then the user likely wants to upload the lambda
         project = ROOT.joinpath(function_name)
-        w = Watcher(project, Handler(onchange=reloader.handle_event))
+        w = Watcher(
+            project,
+            Handler(on_create=reloader.handle_create, on_modify=reloader.handle_modify),
+        )
         w.run()
     elif reloader.is_downloaded():
         # TODO don't check is downloaded a second time?
