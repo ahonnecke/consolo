@@ -1,7 +1,12 @@
 # Consolo
 
+Utility for pseudo-mounting an AWS lambda filesystem locally.
+Supports (as default) hot reloading.
+
+## What do I do with my mouth
 Pronounced "Con Solo", like "Han Solo".
 
+## Some unneeded ASCII art
 ************************,,,,,,,,,,****,*,,,,,,,,,,,,,,,,,,,,,,,***,*,,**********
 /*************************,,,*#%&@@@@@@@&#(,,,,,,,,,,,,,,,,*********************
 ***********************,,,%&&&@&@@&@%&&&@&@@&%#(/*,,,,,,,,,,,,******************
@@ -44,10 +49,12 @@ p//////@@@@@@@@@@@&#(/******,,,,,,*/(/*******,(,*********/**********************
 ////////@@@@@@@@@@@@@@@@*#(//****/*****////%@@@%****(&**************************
 ////////@@@@@@@@@@@@@@@@&&((/*/**/***//(&@@@@@@&****#@(*************************
 
-## installation
+## installation, maybe
 
 'pip install watchdog'
 'pip install argdantic'
+'pip install zipfile'
+
 
 ## TODO
 
