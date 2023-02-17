@@ -145,15 +145,22 @@ class LambdaReloader(LambdaWrapper):
         self.expand_function_code()
 
     def extract_relative_event_path(self, event) -> str:
-        """Grab file path from event, remove local root leaving relative path."""
-        return event.src_path.lstrip(str(self.local_root)) in self.manifest
+        """Grab file path from event, remove local root leaving relative
+        path."""
+        path = str(event.src_path)
+        prefix = str(self.local_root.joinpath(self.function_name)) + "/"
+
+        if prefix and path.startswith(prefix):
+            return path[len(prefix):]
+
+        raise RuntimeError("Prefix was not in path")
 
     def event_file_is_in_manifest(self, event) -> bool:
         """Determine if the given path is in the manfest."""
         self.read_manifest()
 
         # TODO: cache manifest?
-        return self.extract_relative_event_path(event)
+        return self.extract_relative_event_path(event) in self.manifest
 
     def handle_create(self, event: FileCreatedEvent):
         """Handle a file event."""
@@ -173,6 +180,8 @@ class LambdaReloader(LambdaWrapper):
     def handle_modify(self, event: FileModifiedEvent):
         """Handle a file event."""
         if not self.event_file_is_in_manifest(event):
+            logger.debug(self.extract_relative_event_path(event))
+            logger.debug("File is not in manifest")
             return
 
         self.update_function_code()
@@ -188,11 +197,11 @@ class LambdaReloader(LambdaWrapper):
         """
         logger.debug("compressing")
         deployment_package = self.make_archive(self.function_name)
-        logger.debug("compressed")
+        logger.debug(f"compressed {deployment_package}")
 
         try:
             response = self.lambda_client.update_function_code(
-                FunctionName=self.function_name, ZipFile=deployment_package
+                FunctionName=self.function_name, ZipFile=self.read_archive()
             )
         except ClientError as err:
             logger.error(
@@ -206,13 +215,37 @@ class LambdaReloader(LambdaWrapper):
             logger.info("Finished uploading.")
             return response
 
-    def make_archive(self, name):
+    def make_archive_all(self, name):
         """Create zipfile of function_name directory and upload to function_name."""
         # TODO: Don't hardcode directory name
         # TODO: Support exsiting directory name
         shutil.make_archive(name, "zip", name)
+
+    def read_archive(self) -> bytes:
         with open(self.archive, "rb") as file_data:
             return file_data.read()
+
+    def make_archive(self, name):
+        """Create zipfile of function_name directory and upload to
+        function_name."""
+
+        # Open a zip file at the given filepath. If it doesn't exist, create one.
+        # If the directory does not exist, it fails with FileNotFoundError
+        with zipfile.ZipFile(self.archive, 'w') as zipf:
+            for file in self.manifest:
+                # Add a file located at the source_path to the destination within the zip
+                # file. It will overwrite existing files if the names collide, but it
+                # will give a warning
+                source_path = self.local_root.joinpath(self.function_name).joinpath(file)
+                zipf.write(source_path, file)
+
+        return str(self.local_root.joinpath(self.archive))
+
+        # # TODO: Don't hardcode directory name
+        # # TODO: Support exsiting directory name
+        # shutil.make_archive(name, "zip", name)
+        # with open(self.archive, "rb") as file_data:
+        #     return file_data.read()
 
 
 parser = ArgParser()
