@@ -83,11 +83,11 @@ class Handler(FileSystemEventHandler):
 class LambdaWrapper:
     """Generic lambda object."""
 
-    def __init__(self, profile_name, function_name, local_root):
+    def __init__(self, profile_name: str, function_name: str, local_root: str):
         """Set AWS profile, AWS function name and local path to src."""
         self.profile_name = profile_name
         self.function_name = function_name
-        self.local_root = local_root
+        self.local_root = Path(local_root)
 
     @cached_property
     def session(self):
@@ -255,10 +255,10 @@ class LambdaReloader(LambdaWrapper):
         # with open(self.archive, "rb") as file_data:
         #     return file_data.read()
 
-    def watch(self, ROOT):
-        project = ROOT.joinpath(self.function_name)
+    def watch(self):
+        """Start the directory watching daemon."""
         w = Watcher(
-            project,
+            self.local_root.joinpath(self.function_name),
             Handler(on_create=self.handle_create, on_modify=self.handle_modify),
         )
         w.run()
@@ -275,19 +275,15 @@ def main(
     hot_reload: bool = False,
 ):
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
+    reloader = LambdaReloader(profile_name, function_name, path)
 
-    ROOT = Path(path)
-    reloader = LambdaReloader(profile_name, function_name, ROOT)
-
-    # TODO: perform the download and compare
     if not reloader.is_downloaded():
-        # If there no code, then the user likely wants to download the lambda
+        # If there is no code, then the user likely wants to download the lambda
         reloader.clone()
 
     if hot_reload:
-        # # If there IS code, then the user likely wants to upload the lambda
-        # TODO: move into reloader
-        reloader.watch(ROOT)
+        # If there IS code, then the user likely wants to upload the lambda
+        reloader.watch()
     elif reloader.is_downloaded():
         # TODO don't check is downloaded a second time?
         reloader.update_function_code()
