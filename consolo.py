@@ -136,8 +136,8 @@ class LambdaReloader(LambdaWrapper):
 
     @property
     def manifest_path(self):
-        return ".consolo.json"
-        # return self.archive_dir.joinpath
+        """Path to the local manifest file."""
+        return self.archive_dir.joinpath(f".consolo.{self.function_name}.json")
 
     def write_manifest(self):
         """Write the in memory list of files to local storate."""
@@ -149,7 +149,10 @@ class LambdaReloader(LambdaWrapper):
         shutil.unpack_archive(self.archive, self.local_root)
 
     def clone(self):
-        """Download AWS lambda onto local directory."""
+        """Download AWS lambda onto local directory.
+
+        TODO: delete existing files?
+        """
         self.download_function_code()
         self.read_manifest()
         self.expand_function_code()
