@@ -19,7 +19,6 @@ from watchdog.events import (FileCreatedEvent, FileModifiedEvent,
 from watchdog.observers import Observer
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "DEBUG"))
 
 # TODO: support -vv and raise these levels to debug
 logging.getLogger("boto").setLevel(logging.CRITICAL)
@@ -135,9 +134,14 @@ class LambdaReloader(LambdaWrapper):
         self.write_manifest()
         return self.manifest
 
+    @property
+    def manifest_path(self):
+        return ".consolo.json"
+        # return self.archive_dir.joinpath
+
     def write_manifest(self):
         """Write the in memory list of files to local storate."""
-        with open(".consolo.json", "w", encoding="utf-8") as f:
+        with open(self.manifest_path, "w", encoding="utf-8") as f:
             return json.dump(self.manifest, f, ensure_ascii=False, indent=4)
 
     def expand_function_code(self):
@@ -268,8 +272,15 @@ def main(
     function_name: str,
     path: str,
     hot_reload: bool = True,
+    verbose: bool = False,
 ):
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
+    log_level = "INFO"
+    if verbose:
+        log_level = "DEBUG"
+
+    logging.basicConfig(level=log_level)
+
     reloader = LambdaReloader(profile_name, function_name, path)
 
     reloader.validate_root()
