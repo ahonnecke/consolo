@@ -207,7 +207,7 @@ class LambdaReloader(LambdaWrapper):
             if err.response["Error"]["Code"] == "ResourceConflictException":
                 # TODO: suppress this
                 logger.debug("Tried to upload while uploading.")
-                pass
+                return
 
             logger.error(
                 "Couldn't update function %s. Here's why: %s: %s",
