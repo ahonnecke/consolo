@@ -105,6 +105,7 @@ class LambdaReloader(LambdaWrapper):
 
     @property
     def archive_dir(self)-> Path:
+        """Location for building archive of function."""
         return Path("/tmp")
 
     @property
@@ -112,12 +113,12 @@ class LambdaReloader(LambdaWrapper):
         """Get the archive filename."""
         return self.archive_dir.joinpath(".".join([self.function_name, "zip"]))
 
-    def is_downloaded(self) -> bool:
-        """Does there exist a local dir for code."""
+    def validate_root(self) -> bool:
+        """Does the destination directory exist."""
         if not os.path.isdir(self.local_root):
             raise RuntimeError(f"Local dir {self.local_root} does not exist.")
 
-        return False
+        return True
 
     def download_function_code(self):
         """Download and extract the lambda code to a local directory."""
@@ -275,21 +276,16 @@ def main(
     profile_name: str,
     function_name: str,
     path: str,
-    hot_reload: bool = False,
 ):
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
     reloader = LambdaReloader(profile_name, function_name, path)
 
-    if not reloader.is_downloaded():
+    if not reloader.validate_root():
         # If there is no code, then the user likely wants to download the lambda
         reloader.clone()
 
-    if hot_reload:
-        # If there IS code, then the user likely wants to upload the lambda
-        reloader.watch()
-    elif reloader.is_downloaded():
-        # TODO don't check is downloaded a second time?
-        reloader.update_function_code()
+    # If there IS code, then the user likely wants to upload the lambda
+    reloader.watch()
 
 
 if __name__ == "__main__":
