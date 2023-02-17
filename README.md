@@ -51,8 +51,10 @@ p//////@@@@@@@@@@@&#(/******,,,,,,*/(/*******,(,*********/**********************
 
 ## installation, maybe
 
-'pip install watchdog'
 'pip install argdantic'
+'pip install boto3'
+'pip install requests'
+'pip install watchdog'
 'pip install zipfile'
 
 
