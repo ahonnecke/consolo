@@ -275,7 +275,7 @@ def main(
     reloader.validate_root()
 
     if hot_reload:
-        # If hot reload, dowload the code
+        # If hot reload, download the code, with clobber
         reloader.clone()
         # and start the daemon
         reloader.watch()
