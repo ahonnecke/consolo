@@ -21,6 +21,8 @@ Pronounced "Con Solo", like "Han Solo".
 
 ### Pip install
 
+NOT CURRENTLY SUPPORTED
+
 - TODO
   - Package for pip
   - Add to pypy
