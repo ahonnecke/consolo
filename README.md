@@ -21,13 +21,14 @@ Pronounced "Con Solo", like "Han Solo".
 
 ### Pip install
 
-TODO: remove this TODO
+- TODO
+  - Package for pip
+  - Add to pypy
+  - Refactor into multiple files
+
 
 ## TODO
 
-- Package for pip
-- Add to pypy
-- Refactor into multiple files
 - AST files before upload
 - Unit tests
 - Follow logs while watching
