@@ -31,7 +31,11 @@ NOT CURRENTLY SUPPORTED
 
 ## TODO
 
+- List available functions
 - AST files before upload
 - Unit tests
 - Follow logs while watching
 
+## Usage
+
+`consolo.py --profile-name dev-power --function-name myLambda --path /home/ahonnecke/src/my_lambda/`
