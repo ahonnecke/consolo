@@ -1,3 +1,5 @@
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=ahonnecke_consolo&metric=bugs)](https://sonarcloud.io/summary/new_code?id=ahonnecke_consolo)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=ahonnecke_consolo&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=ahonnecke_consolo)
 [![Quality Gate
 Status](https://sonarcloud.io/api/project_badges/measure?project=ahonnecke_consolo&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ahonnecke_consolo)
 
