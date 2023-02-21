@@ -25,11 +25,10 @@ TODO: remove this TODO
 
 ## TODO
 
-- On imaging a lambda, save the manifest of downloaded files locally.
-  - get file list from the archive
-  - save file list as manifest
-
-- packaging for pip
+- Package for pip
+- Add to pypy
+- Refactor into multiple files
 - AST files before upload
+- Unit tests
 - Follow logs while watching
-- tests
+
