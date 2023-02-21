@@ -12,7 +12,7 @@ Pronounced "Con Solo", like "Han Solo".
 
 ### Single file
 
-`curl -s http://server/path/script.sh | bash`
+`curl -s https://raw.githubusercontent.com/ahonnecke/consolo/main/install.sh | bash`
 
 ### Pip install
 
