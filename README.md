@@ -1,3 +1,6 @@
+[![Quality Gate
+Status](https://sonarcloud.io/api/project_badges/measure?project=ahonnecke_consolo&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ahonnecke_consolo)
+
 # Consolo
 
 Utility for pseudo-mounting an AWS lambda filesystem locally.
