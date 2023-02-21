@@ -49,14 +49,15 @@ p//////@@@@@@@@@@@&#(/******,,,,,,*/(/*******,(,*********/**********************
 ////////@@@@@@@@@@@@@@@@*#(//****/*****////%@@@%****(&**************************
 ////////@@@@@@@@@@@@@@@@&&((/*/**/***//(&@@@@@@&****#@(*************************
 
-## installation, maybe
+## Installation
 
-'pip install argdantic'
-'pip install boto3'
-'pip install requests'
-'pip install watchdog'
-'pip install zipfile'
+### Single file
 
+`curl -s http://server/path/script.sh | bash`
+
+### Pip install
+
+TODO: remove this TODO
 
 ## TODO
 

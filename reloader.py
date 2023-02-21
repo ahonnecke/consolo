@@ -141,7 +141,7 @@ class LambdaReloader(LambdaWrapper):
         """Unpack the archive."""
         shutil.unpack_archive(self.archive, self.local_root)
 
-    def clone(self) -> None:
+    def clobber_local(self) -> None:
         """Download AWS lambda onto local directory.
 
         TODO: delete existing files?
