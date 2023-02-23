@@ -8,6 +8,23 @@ Status](https://sonarcloud.io/api/project_badges/measure?project=ahonnecke_conso
 Utility for pseudo-mounting an AWS lambda filesystem locally.
 Supports (as default) hot reloading.
 
+## Examples
+
+Start hot syncing
+``` bash
+consolo --profile-name dev  --function-name myProject  --path /src/code/myproject
+```
+
+Upload from local to cloud
+``` bash
+consolo --profile-name dev  --function-name myProject  --path /src/code/myproject --upload
+```
+
+Download from cloud to local
+``` bash
+consolo --profile-name dev  --function-name myProject  --path /src/code/myproject --download
+```
+
 ## What do I do with my mouth
 Pronounced "Con Solo", like "Han Solo".
 
@@ -31,11 +48,31 @@ NOT CURRENTLY SUPPORTED
 
 ## TODO
 
+- Ignore new files aded by pytest
+- Capture and deal with rapid multi-file changes
 - List available functions
-- AST files before upload
+- ASST files before upload
 - Unit tests
 - Follow logs while watching
 
 ## Usage
 
 `consolo.py --profile-name dev-power --function-name myLambda --path /home/ahonnecke/src/my_lambda/`
+
+## examples
+
+``` bash
+ahonnecke@antonym:~/src/v2x-messenger$ consolo.py \
+  --profile-name dev-power \
+  --function-name v2x-messenger__cipt-status-ingestion \
+  --path /home/ahonnecke/src/v2x-messenger/lambdas/cipt_status_ingestion/
+```
+
+- With the profile 
+ - `dev-power`
+- Against the lambda 
+ - v2x-messenger__cipt-status-ingestion`
+- Mapped on top of the local directory
+ - `/home/ahonnecke/src/v2x-messenger/lambdas/cipt_status_ingestion/`
+
+![image](https://user-images.githubusercontent.com/419355/220725338-aa16369b-b27c-442d-b2e2-d60ca64cf7fc.png)

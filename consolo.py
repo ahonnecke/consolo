@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 UploadableEvent = TypeVar("T", FileCreatedEvent, FileModifiedEvent)
 
+
 class Watcher:
     """Watch a directory for file events."""
 
@@ -59,16 +60,18 @@ class Handler(FileSystemEventHandler):
         if event.is_directory:
             return None
 
+        #TODO: perform file validation.
+
         if isinstance(event, FileCreatedEvent):
             # Take any action here when a file is first created.
-            logger.info(f"Received created event - {event.src_path}.")
+            logger.debug(f"Received created event - {event.src_path}.")
 
             # TODO: perform AST check
             return self.on_create(event)
 
         elif isinstance(event, FileModifiedEvent):
             # Taken any action here when a file is modified.
-            logger.info(f"Received modified event - {event.src_path}.")
+            logger.debug(f"Received modified event - {event.src_path}.")
 
             # TODO: perform AST check
             return self.on_modify(event)
@@ -97,6 +100,19 @@ class LambdaWrapper:
 class LambdaReloader(LambdaWrapper):
     """Map an AWS function onto a local dir."""
 
+    def __init__(
+        self,
+        profile_name: str,
+        function_name: str,
+        local_root: str,
+        allow_file_creation: bool,
+    ) -> None:
+        """Set AWS profile, AWS function name and local path to src."""
+        self.profile_name = profile_name
+        self.function_name = function_name
+        self.local_root = Path(local_root)
+        self.allow_file_creation = allow_file_creation
+
     @property
     def archive_dir(self) -> Path:
         """Location for building archive of function."""
@@ -115,7 +131,10 @@ class LambdaReloader(LambdaWrapper):
         return True
 
     def download_function_code(self) -> None:
-        """Download and extract all lambda files to local, overwriting existing."""
+        """Download and extract all lambda files to local, overwriting
+        existing."""
+
+        logger.info("Starting download.")
         response = self.lambda_client.get_function(FunctionName=self.function_name)
         zip_url = response["Code"]["Location"]
 
@@ -151,6 +170,7 @@ class LambdaReloader(LambdaWrapper):
         self.download_function_code()
         self.read_manifest()
         self.expand_function_code()
+        logger.info("Finished download.")
 
     def extract_relative_event_path(self, event) -> str:
         """Extract relative path from event."""
@@ -171,6 +191,9 @@ class LambdaReloader(LambdaWrapper):
 
     def handle_create(self, event: FileCreatedEvent) -> None:
         """Handle a file event."""
+        if not self.allow_file_creation:
+            return None
+
         self.read_manifest()
 
         if not self.event_file_is_in_manifest(event):
@@ -195,13 +218,14 @@ class LambdaReloader(LambdaWrapper):
 
     def update_function_code(self) -> None:
         """
-        Compress and upload local code.
+        Compress and upload local code to cloud.
 
         Updates the code for a Lambda function by submitting a .zip archive that contains
         the code for the function.
 
         :return: Data about the update, including the status.
         """
+        logger.info("Starting upload.")
         logger.debug("compressing")
         deployment_package = self.make_archive(self.function_name)
         logger.debug(f"compressed {deployment_package}")
@@ -260,6 +284,7 @@ class LambdaReloader(LambdaWrapper):
         )
         w.run()
 
+
 logger = logging.getLogger(__name__)
 
 logging.getLogger("boto").setLevel(logging.CRITICAL)
@@ -274,9 +299,10 @@ def main(
     profile_name: str,
     function_name: str,
     path: str,
-    hot_reload: bool = True,
-    read: bool = True,
-    verbose: bool = False
+    upload: bool = False,
+    download: bool = False,
+    create: bool = False,
+    verbose: bool = False,
 ) -> None:
     """Entrypoint for AWS lambda hot reloader, CLI args in signature."""
     log_level = "INFO"
@@ -285,21 +311,24 @@ def main(
 
     logging.basicConfig(level=log_level)
 
-    reloader = LambdaReloader(profile_name, function_name, path)
+    reloader = LambdaReloader(
+        profile_name, function_name, path, allow_file_creation=create
+    )
 
     reloader.validate_root()
 
-    if hot_reload:
+    if upload and not download:
+        print("Not supported yet.")
+        exit(1)
+        reloader.update_function_code()
+    elif download and not upload:
+        reloader.clobber_local()
+    else:
         # If hot reload, download from cloud, with clobber
         reloader.clobber_local()
         # and start the daemon
         reloader.watch()
-    elif read:
-        # hot is false, read is true, download from cloud with clobber
-        reloader.clobber_local()
-    elif not read:
-        # Neither hot not read: just push whatever is local to the cloud.
-        reloader.update_function_code()
+
 
 
 if __name__ == "__main__":
