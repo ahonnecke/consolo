@@ -1,0 +1,34 @@
+[tool.pdm]
+
+[project]
+name = "consolo"
+version = "0.2.3"
+description = "Utility for pseudo-mounting an AWS lambda filesystem locally"
+authors = [
+    {name = "Ashton Honnecke", email = "ashton@pixelstub.com"},
+]
+dependencies = [
+    "argdantic>=0.3.0",
+    "boto3>=1.26.87",
+    "requests>=2.28.2",
+    "watchdog>=2.3.1",
+]
+requires-python = ">=3.8"
+readme = "README.md"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[build-system]
+requires = ["pdm-pep517>=1.0"]
+build-backend = "pdm.pep517.api"
+
+[project.urls]
+"Homepage" = "https://github.com/ahonnecke/consolo"
+"Bug Tracker" = "https://github.com/ahonnecke/consolo/issues"
+
+[project.scripts]
+consolo ="consolo.consolo:parser"

@@ -1,3 +1,4 @@
+[![pdm-managed](https://img.shields.io/badge/pdm-managed-blueviolet)](https://pdm.fming.dev)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=ahonnecke_consolo&metric=bugs)](https://sonarcloud.io/summary/new_code?id=ahonnecke_consolo)
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=ahonnecke_consolo&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=ahonnecke_consolo)
 [![Quality Gate
@@ -45,15 +46,17 @@ NOT CURRENTLY SUPPORTED
   - Add to pypy
   - Refactor into multiple files
 
-
 ## TODO
 
-- Ignore new files added by pytest
 - TESTING: Capture and deal with rapid multi-file changes
 - List available functions
 - AST files before upload
 - Unit tests
 - Follow logs while watching
+
+## DONE
+
+- Ignore new files added by pytest
 
 ## Usage
 
@@ -76,3 +79,9 @@ ahonnecke@antonym:~/src/v2x-messenger$ consolo.py \
  - `/home/ahonnecke/src/v2x-messenger/lambdas/cipt_status_ingestion/`
 
 ![image](https://user-images.githubusercontent.com/419355/220725338-aa16369b-b27c-442d-b2e2-d60ca64cf7fc.png)
+
+### publish
+
+``` bash
+pdm publish --username $PIP_USERNAME --password $PIP_PW
+```
