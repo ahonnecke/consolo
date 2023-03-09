@@ -48,10 +48,10 @@ NOT CURRENTLY SUPPORTED
 
 ## TODO
 
-- Ignore new files aded by pytest
-- Capture and deal with rapid multi-file changes
+- Ignore new files added by pytest
+- TESTING: Capture and deal with rapid multi-file changes
 - List available functions
-- ASST files before upload
+- AST files before upload
 - Unit tests
 - Follow logs while watching
 

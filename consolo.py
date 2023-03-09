@@ -39,7 +39,7 @@ class Watcher:
         self.observer.start()
         try:
             while True:
-                time.sleep(5)
+                time.sleep(2)
         except:
             self.observer.stop()
             logger.error("Error")
@@ -112,6 +112,7 @@ class LambdaReloader(LambdaWrapper):
         self.function_name = function_name
         self.local_root = Path(local_root)
         self.allow_file_creation = allow_file_creation
+        self.suppressed_uploads = False
 
     @property
     def archive_dir(self) -> Path:
@@ -229,6 +230,7 @@ class LambdaReloader(LambdaWrapper):
         logger.debug("compressing")
         deployment_package = self.make_archive(self.function_name)
         logger.debug(f"compressed {deployment_package}")
+        self.suppressed_uploads = False
 
         try:
             response = self.lambda_client.update_function_code(
@@ -238,6 +240,7 @@ class LambdaReloader(LambdaWrapper):
             if err.response["Error"]["Code"] == "ResourceConflictException":
                 # TODO: suppress this
                 logger.debug("Tried to upload while uploading.")
+                self.suppressed_uploads = True
                 return
 
             logger.error(
@@ -249,6 +252,12 @@ class LambdaReloader(LambdaWrapper):
             raise
         else:
             logger.info("Finished uploading.")
+
+            if self.suppressed_uploads:
+                logger.info("Supressing uploading.")
+                time.sleep(2)
+                return self.update_function_code()
+
             return response
 
     def make_archive_all(self, name) -> None:
