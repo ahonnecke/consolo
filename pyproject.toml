@@ -31,4 +31,4 @@ build-backend = "pdm.pep517.api"
 "Bug Tracker" = "https://github.com/ahonnecke/consolo/issues"
 
 [project.scripts]
-contest ="consolo.consolo:parser"
+consolo = "consolo.consolo:parser"
