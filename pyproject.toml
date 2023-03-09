@@ -2,7 +2,7 @@
 
 [project]
 name = "consolo"
-version = "0.2.3"
+version = "0.2.5"
 description = "Utility for pseudo-mounting an AWS lambda filesystem locally"
 authors = [
     {name = "Ashton Honnecke", email = "ashton@pixelstub.com"},
@@ -31,4 +31,4 @@ build-backend = "pdm.pep517.api"
 "Bug Tracker" = "https://github.com/ahonnecke/consolo/issues"
 
 [project.scripts]
-consolo ="consolo.consolo:parser"
+contest ="consolo.consolo:parser"

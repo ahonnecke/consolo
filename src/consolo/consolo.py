@@ -304,7 +304,7 @@ parser = ArgParser()
 
 
 @parser.command()
-def main(
+def _main(
     profile_name: str,
     function_name: str,
     path: str,
@@ -338,7 +338,8 @@ def main(
         # and start the daemon
         reloader.watch()
 
-
+def main():
+    return parser()
 
 if __name__ == "__main__":
-    parser()
+    main()
