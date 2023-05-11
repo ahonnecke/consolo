@@ -103,14 +103,27 @@ class LambdaReloader(LambdaWrapper):
     def __init__(
         self,
         profile_name: str,
-        function_name: str,
         local_root: str,
         allow_file_creation: bool,
+        function_name: str = None,
     ) -> None:
         """Set AWS profile, AWS function name and local path to src."""
         self.profile_name = profile_name
-        self.function_name = function_name
         self.local_root = Path(local_root)
+        self.config = {}
+
+        if not function_name:
+            self.read_config()
+            function_name = self.load_function_name()
+
+        self.function_name = function_name
+        if not self.function_name:
+            print("Unable to determine function name.")
+            exit()
+
+        self.config = {"function_name": self.function_name}
+        self.write_config()
+
         self.allow_file_creation = allow_file_creation
         self.suppressed_uploads = False
 
@@ -123,6 +136,9 @@ class LambdaReloader(LambdaWrapper):
     def archive(self) -> Path:
         """Get the archive filename."""
         return self.archive_dir.joinpath(".".join([self.function_name, "zip"]))
+
+    def load_function_name(self):
+        return self.config.get("function_name")
 
     def validate_root(self) -> bool:
         """Raise if destination directory does not exist."""
@@ -158,6 +174,28 @@ class LambdaReloader(LambdaWrapper):
         """Write the in memory list of files to local storate."""
         with open(self.manifest_path, "w", encoding="utf-8") as f:
             return json.dump(self.manifest, f, ensure_ascii=False, indent=4)
+
+    def read_config(self):
+        """Read the local list of files in the lambda."""
+
+        # try:
+        with open(self.config_path, "r", encoding="utf-8") as f:
+            self.config = json.load(f)
+            breakpoint()
+
+            return self.config
+        # except Exception:
+        #     return {}
+
+    @property
+    def config_path(self) -> Path:
+        """Path to the local config file."""
+        return self.local_root.joinpath(".consolo.config.json")
+
+    def write_config(self) -> None:
+        """Write the in memory list of files to local storate."""
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            return json.dump(self.config, f, ensure_ascii=False, indent=4)
 
     def expand_function_code(self) -> None:
         """Unpack the archive."""
@@ -306,8 +344,8 @@ parser = ArgParser()
 @parser.command()
 def _main(
     profile_name: str,
-    function_name: str,
     path: str,
+    function_name: str = None,
     upload: bool = False,
     download: bool = False,
     create: bool = False,
@@ -324,7 +362,7 @@ def _main(
     path = Path(relative_path).absolute()
 
     reloader = LambdaReloader(
-        profile_name, function_name, path, allow_file_creation=create
+        profile_name, path, allow_file_creation=create, function_name=function_name,
     )
     reloader.validate_root()
 
