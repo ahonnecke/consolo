@@ -178,14 +178,13 @@ class LambdaReloader(LambdaWrapper):
     def read_config(self):
         """Read the local list of files in the lambda."""
 
-        # try:
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            self.config = json.load(f)
-            breakpoint()
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                self.config = json.load(f)
 
             return self.config
-        # except Exception:
-        #     return {}
+        except Exception:
+            return {}
 
     @property
     def config_path(self) -> Path:
