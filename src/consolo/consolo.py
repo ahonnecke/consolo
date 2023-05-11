@@ -320,10 +320,12 @@ def _main(
 
     logging.basicConfig(level=log_level)
 
+    relative_path = path
+    path = Path(relative_path).absolute()
+
     reloader = LambdaReloader(
         profile_name, function_name, path, allow_file_creation=create
     )
-
     reloader.validate_root()
 
     if upload and not download:

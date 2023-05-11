@@ -87,6 +87,13 @@ optional arguments:
   --no-verbose
 ```
 
+## Known issues (not slated for fix)
+- You must hard reload the console to see changes
+- You must "deploy" from the console for changes to be effected, if changes are
+  made in the console
+- if changes are left in the console, the upload will fail with
+  "ResourceUpdateInProgress", or something
+
 ## TODO
 
 - TESTING: Capture and deal with rapid multi-file changes
