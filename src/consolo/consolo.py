@@ -277,6 +277,7 @@ class LambdaReloader(LambdaWrapper):
             if err.response["Error"]["Code"] == "ResourceConflictException":
                 # TODO: suppress this
                 logger.debug("Tried to upload while uploading.")
+                logger.info("Please ensure you are not editing in the console.")
                 self.suppressed_uploads = True
                 return
 
